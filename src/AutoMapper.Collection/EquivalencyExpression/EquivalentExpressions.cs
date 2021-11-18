@@ -9,12 +9,12 @@ namespace AutoMapper.EquivalencyExpression
 {
     public static class EquivalentExpressions
     {
-        public static void AddCollectionMappers(this IMapperConfigurationExpression cfg)
+        public static void AddCollectionMappers(this IMapperConfigurationExpression cfg, Action<EquivalentExpressionAddRemoveCollectionOptions> collectionOptions = null)
         {
             cfg.Features.Set(new GeneratePropertyMapsExpressionFeature());
             cfg.InsertBefore<ReadOnlyCollectionMapper>(
                 new ObjectToEquivalencyExpressionByEquivalencyExistingMapper(),
-                new EquivalentExpressionAddRemoveCollectionMapper());
+                new EquivalentExpressionAddRemoveCollectionMapper(collectionOptions));
         }
 
         private static void InsertBefore<TObjectMapper>(this IMapperConfigurationExpression cfg, params IConfigurationObjectMapper[] adds)

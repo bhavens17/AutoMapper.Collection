@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -12,8 +13,17 @@ namespace AutoMapper.Mappers
     public class EquivalentExpressionAddRemoveCollectionMapper : EnumerableMapperBase, IConfigurationObjectMapper
     {
         private readonly CollectionMapper _collectionMapper = new CollectionMapper();
+        private readonly static EquivalentExpressionAddRemoveCollectionOptions _options = new EquivalentExpressionAddRemoveCollectionOptions();
 
         public IConfigurationProvider ConfigurationProvider { get; set; }
+
+        public EquivalentExpressionAddRemoveCollectionMapper(Action<EquivalentExpressionAddRemoveCollectionOptions> configuration = default)
+        {
+            if(configuration != default)
+            {
+                configuration(_options);
+            }
+        }
 
         public static TDestination Map<TSource, TSourceItem, TDestination, TDestinationItem>(TSource source, TDestination destination, ResolutionContext context, IEquivalentComparer equivalentComparer)
             where TSource : IEnumerable<TSourceItem>
@@ -47,7 +57,10 @@ namespace AutoMapper.Mappers
             {
                 if (keypair.DestinationItem == null)
                 {
-                    destination.Add((TDestinationItem)context.Mapper.Map(keypair.SourceItem, null, typeof(TSourceItem), typeof(TDestinationItem)));
+                    var newItem = (TDestinationItem)context.Mapper.Map(keypair.SourceItem, null, typeof(TSourceItem), typeof(TDestinationItem));
+                    destination.Add(newItem);
+                    if (_options?.OnItemAdded != null)
+                        _options.OnItemAdded(newItem);
                 }
                 else
                 {
@@ -58,6 +71,8 @@ namespace AutoMapper.Mappers
             foreach (var removedItem in destList.SelectMany(x => x.Value))
             {
                 destination.Remove(removedItem);
+                if (_options?.OnItemRemoved != null)
+                    _options.OnItemRemoved(removedItem);
             }
 
             return destination;
@@ -105,5 +120,11 @@ namespace AutoMapper.Mappers
             var collectionMapperExpression = _collectionMapper.MapExpression(configurationProvider, profileMap, memberMap, sourceExpression, destExpression, contextExpression);
             return Condition(notNull, map, Convert(collectionMapperExpression, destExpression.Type));
         }
+    }
+
+    public class EquivalentExpressionAddRemoveCollectionOptions
+    {
+        public Action<object> OnItemAdded { get; set; }
+        public Action<object> OnItemRemoved { get; set; }
     }
 }
