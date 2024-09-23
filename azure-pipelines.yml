@@ -1,0 +1,57 @@
+# ASP.NET Core (.NET Framework)
+# Build and test ASP.NET Core projects targeting the full .NET Framework.
+# Add steps that publish symbols, save build artifacts, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+
+trigger:
+- master
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+  version.MajorMinor: '1.0' # Manually adjust the version number as needed for semantic versioning. Patch is auto-incremented.
+  version.Patch: $[counter(variables['version.MajorMinor'], 0)]
+  versionNumber: '$(version.MajorMinor).$(version.Patch)'
+
+name: 'Set dynamically below in a task'
+
+steps:
+- task: PowerShell@2
+  displayName: Set the name of the build (i.e. the Build.BuildNumber)
+  inputs:
+    targetType: 'inline'
+    script: |
+      [string] $buildName = "$(versionNumber)_$(Build.SourceBranchName)"
+      Write-Host "Setting the name of the build to '$buildName'."
+      Write-Host "##vso[build.updatebuildnumber]$buildName"
+
+- task: NuGetToolInstaller@1
+
+- task: NuGetCommand@2
+  inputs:
+    restoreSolution: '$(solution)'
+
+- task: MSBuild@1
+  displayName: 'Build project AutoMapper.Collection.csproj'
+  inputs:
+    solution: src/AutoMapper.Collection/AutoMapper.Collection.csproj
+    msbuildArchitecture: x64
+    configuration: '$(BuildConfiguration)'
+    clean: true
+
+- task: DotNetCoreCLI@2
+  displayName: 'NuGet pack AutoMapper.Collection'
+  inputs:
+    command: pack
+    packagesToPack: src/AutoMapper.Collection/AutoMapper.Collection.csproj
+    versioningScheme: byBuildNumber
+
+- task: DotNetCoreCLI@2
+  displayName: 'NuGet push AutoMapper.Collection'
+  inputs:
+    command: push
+    publishVstsFeed: 'a2a69d70-e537-4d6b-b2cc-770560a65214/23cff7a3-58da-4519-b243-b2583404ce72'
